@@ -1,0 +1,26 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# contracts
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/1337/
+contracts/deployments/1337.json
+
+# indexer
+indexer/.ponder/
+indexer/generated/
+
+# web
+web/.next/
+web/out/
+web/public/uploads/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# web uploads (local dev storage)
+web/.uploads/

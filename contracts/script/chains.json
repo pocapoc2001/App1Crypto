@@ -1,0 +1,38 @@
+{
+  "chain_1337": {
+    "name": "local",
+    "poolManager": "0x0000000000000000000000000000000000000000",
+    "startingMarketCap": "1500000000000000000",
+    "creationFee": "0"
+  },
+  "chain_84532": {
+    "name": "baseSepolia",
+    "poolManager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+    "startingMarketCap": "1500000000000000000",
+    "creationFee": "0"
+  },
+  "chain_8453": {
+    "name": "base",
+    "poolManager": "0x498581fF718922c3f8e6A244956aF099B2652b2b",
+    "startingMarketCap": "1500000000000000000",
+    "creationFee": "0"
+  },
+  "chain_4663": {
+    "name": "robinhood",
+    "poolManager": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+    "startingMarketCap": "1500000000000000000",
+    "creationFee": "0"
+  },
+  "chain_46630": {
+    "name": "robinhoodTestnet",
+    "poolManager": "0x0000000000000000000000000000000000000000",
+    "startingMarketCap": "1500000000000000000",
+    "creationFee": "0"
+  },
+  "chain_1": {
+    "name": "ethereum",
+    "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
+    "startingMarketCap": "3000000000000000000",
+    "creationFee": "0"
+  }
+}
