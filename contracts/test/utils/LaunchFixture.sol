@@ -49,6 +49,7 @@ abstract contract LaunchFixture is Test {
         return LaunchFactory.LaunchConfig({
             feeBps: 100,
             creatorShareBps: 5000,
+            referralShareBps: 2000,
             maxDevBuyBps: 500,
             antiSnipeMaxBuyBps: 100,
             antiSnipeDuration: 60,
@@ -114,6 +115,18 @@ abstract contract LaunchFixture is Test {
         internal
         returns (BalanceDelta delta)
     {
+        return _swapRaw(who, key, zeroForOne, amountSpecified, value, "");
+    }
+
+    /// Swap through PoolSwapTest (any of the four exact-in/exact-out shapes) with arbitrary hookData.
+    function _swapRaw(
+        address who,
+        PoolKey memory key,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint256 value,
+        bytes memory hookData
+    ) internal returns (BalanceDelta delta) {
         vm.prank(who, who);
         delta = swapper.swap{value: value}(
             key,
@@ -123,13 +136,20 @@ abstract contract LaunchFixture is Test {
                 sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             }),
             PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
-            ""
+            hookData
         );
     }
 
     function _buy(address who, PoolKey memory key, uint256 ethIn) internal returns (uint256 tokensOut) {
+        return _buy(who, key, ethIn, address(0));
+    }
+
+    function _buy(address who, PoolKey memory key, uint256 ethIn, address referrer)
+        internal
+        returns (uint256 tokensOut)
+    {
         vm.prank(who, who);
-        tokensOut = router.buy{value: ethIn}(key, 0, who, block.timestamp);
+        tokensOut = router.buy{value: ethIn}(key, 0, who, block.timestamp, referrer);
     }
 
     function _signPermit(uint256 pk, address token, uint256 amount, uint256 nonce, uint256 deadline, address spender)

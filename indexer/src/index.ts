@@ -2,7 +2,7 @@ import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import { deployments, marketCapEthFromSqrt, priceEthFromSqrt } from "@app1/shared";
 
-const { candle, feeClaim, holder, pool, token, trade } = schema;
+const { candle, feeClaim, holder, pool, referral, referralFee, token, trade } = schema;
 const CANDLE_INTERVALS = [60, 300, 900, 3600, 14400, 86400] as const;
 const ZERO = "0x0000000000000000000000000000000000000000";
 const DEAD = "0x000000000000000000000000000000000000dead";
@@ -180,6 +180,35 @@ ponder.on("FeeHook:ProtocolFeesClaimed", async ({ event, context }) => {
     recipient: event.args.treasury,
     amount: event.args.amount,
     isProtocol: true,
+    timestamp: event.block.timestamp,
+    txHash: event.transaction.hash,
+  });
+});
+
+ponder.on("FeeHook:ReferrerSet", async ({ event, context }) => {
+  const chainId = context.chain.id;
+  await context.db
+    .insert(referral)
+    .values({
+      id: `${chainId}:${event.args.trader.toLowerCase()}`,
+      chainId,
+      trader: event.args.trader,
+      referrer: event.args.referrer,
+      timestamp: event.block.timestamp,
+      txHash: event.transaction.hash,
+    })
+    .onConflictDoNothing(); // bindings are sticky: the first one wins
+});
+
+ponder.on("FeeHook:ReferralFeeAccrued", async ({ event, context }) => {
+  const chainId = context.chain.id;
+  await context.db.insert(referralFee).values({
+    id: `${chainId}:${event.transaction.hash}:${event.log.logIndex}`,
+    chainId,
+    poolId: event.args.poolId,
+    referrer: event.args.referrer,
+    trader: event.args.trader,
+    amount: event.args.amount,
     timestamp: event.block.timestamp,
     txHash: event.transaction.hash,
   });

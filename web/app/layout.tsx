@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { APP_NAME, SITE_URL } from "@/lib/config";
+import { ReferralCapture } from "@/lib/referral";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -20,6 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body className="min-h-dvh">
         <Providers>
+          {/* Saves ?ref=0x… from any page. Suspense keeps the rest of each page statically prerendered. */}
+          <Suspense fallback={null}>
+            <ReferralCapture />
+          </Suspense>
           <AppShell>{children}</AppShell>
         </Providers>
       </body>

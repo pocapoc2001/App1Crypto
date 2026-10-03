@@ -40,6 +40,11 @@ export const launchFactoryAbi = [
             "internalType": "uint16"
           },
           {
+            "name": "referralShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
             "name": "maxDevBuyBps",
             "type": "uint16",
             "internalType": "uint16"
@@ -170,6 +175,11 @@ export const launchFactoryAbi = [
         "internalType": "uint16"
       },
       {
+        "name": "referralShareBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
         "name": "maxDevBuyBps",
         "type": "uint16",
         "internalType": "uint16"
@@ -214,6 +224,11 @@ export const launchFactoryAbi = [
           },
           {
             "name": "creatorShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "referralShareBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -457,6 +472,11 @@ export const launchFactoryAbi = [
             "internalType": "uint16"
           },
           {
+            "name": "referralShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
             "name": "maxDevBuyBps",
             "type": "uint16",
             "internalType": "uint16"
@@ -604,6 +624,11 @@ export const launchFactoryAbi = [
           },
           {
             "name": "creatorShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "referralShareBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -909,6 +934,19 @@ export const feeHookAbi = [
   {
     "type": "function",
     "name": "MAX_FEE_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_REFERRAL_SHARE_BPS",
     "inputs": [],
     "outputs": [
       {
@@ -1919,6 +1957,11 @@ export const feeHookAbi = [
         "internalType": "uint16"
       },
       {
+        "name": "referralShareBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
         "name": "launchedAt",
         "type": "uint40",
         "internalType": "uint40"
@@ -1958,6 +2001,25 @@ export const feeHookAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "referrerOf",
+    "inputs": [
+      {
+        "name": "trader",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "referrer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -2010,6 +2072,11 @@ export const feeHookAbi = [
       },
       {
         "name": "creatorShareBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "referralShareBps",
         "type": "uint16",
         "internalType": "uint16"
       },
@@ -2161,6 +2228,12 @@ export const feeHookAbi = [
         "type": "uint16",
         "indexed": false,
         "internalType": "uint16"
+      },
+      {
+        "name": "referralShareBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
       }
     ],
     "anonymous": false
@@ -2180,6 +2253,56 @@ export const feeHookAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReferralFeeAccrued",
+    "inputs": [
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "PoolId"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "trader",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReferrerSet",
+    "inputs": [
+      {
+        "name": "trader",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -2383,6 +2506,11 @@ export const launchRouterAbi = [
         "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -2531,6 +2659,11 @@ export const launchRouterAbi = [
         "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -2612,6 +2745,11 @@ export const launchRouterAbi = [
         "name": "signature",
         "type": "bytes",
         "internalType": "bytes"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [

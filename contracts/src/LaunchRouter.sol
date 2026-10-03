@@ -14,6 +14,9 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 /// @title LaunchRouter
 /// @notice Minimal exact-input router for native-ETH / token v4 pools, plus revert-based quoting.
 /// Holds no funds between transactions. Tokens are only ever pulled from msg.sender.
+/// Every trade takes an optional `referrer` (zero = none), forwarded to the FeeHook as hookData. The hook
+/// pays it part of the platform fee, but only the first valid referrer a trader (tx.origin) ever uses sticks:
+/// later values, and a referrer equal to the trader, are ignored.
 contract LaunchRouter is IUnlockCallback {
     using SafeTransferLib for address;
 
@@ -33,6 +36,7 @@ contract LaunchRouter is IUnlockCallback {
         uint256 amountIn;
         address payer;
         address recipient;
+        address referrer; // sent to the hook as hookData; zero = none
         Pay pay;
         bytes permitData; // abi.encode(nonce, deadline, signature) when pay == Permit2
     }
@@ -55,33 +59,40 @@ contract LaunchRouter is IUnlockCallback {
     }
 
     /// @notice Spend all msg.value on tokens.
-    function buy(PoolKey calldata key, uint256 minTokensOut, address recipient, uint256 deadline)
+    /// @param referrer Optional (zero = none); see the contract notes.
+    function buy(PoolKey calldata key, uint256 minTokensOut, address recipient, uint256 deadline, address referrer)
         external
         payable
         checkDeadline(deadline)
         returns (uint256 tokensOut)
     {
         if (msg.value == 0) revert ZeroAmount();
-        (uint256 ethPaid, uint256 out) = _swap(Callback(key, true, msg.value, msg.sender, recipient, Pay.Eth, ""));
+        (uint256 ethPaid, uint256 out) =
+            _swap(Callback(key, true, msg.value, msg.sender, recipient, referrer, Pay.Eth, ""));
         if (out < minTokensOut) revert TooLittleReceived(out, minTokensOut);
         if (ethPaid < msg.value) msg.sender.safeTransferETH(msg.value - ethPaid);
         return out;
     }
 
     /// @notice Sell tokens for ETH. Requires a prior `approve(router, amount)`.
-    function sell(PoolKey calldata key, uint256 tokensIn, uint256 minEthOut, address recipient, uint256 deadline)
-        external
-        checkDeadline(deadline)
-        returns (uint256 ethOut)
-    {
+    /// @param referrer Optional (zero = none); see the contract notes.
+    function sell(
+        PoolKey calldata key,
+        uint256 tokensIn,
+        uint256 minEthOut,
+        address recipient,
+        uint256 deadline,
+        address referrer
+    ) external checkDeadline(deadline) returns (uint256 ethOut) {
         if (tokensIn == 0) revert ZeroAmount();
-        (, ethOut) = _swap(Callback(key, false, tokensIn, msg.sender, recipient, Pay.Approval, ""));
+        (, ethOut) = _swap(Callback(key, false, tokensIn, msg.sender, recipient, referrer, Pay.Approval, ""));
         if (ethOut < minEthOut) revert TooLittleReceived(ethOut, minEthOut);
     }
 
     /// @notice Sell tokens for ETH using a Permit2 SignatureTransfer signature (no approve tx needed for
     /// LaunchTokens, which pre-approve Permit2). The permit must be for exactly `tokensIn` of the pool token,
     /// with this router as spender.
+    /// @param referrer Optional (zero = none); see the contract notes.
     function sellWithPermit(
         PoolKey calldata key,
         uint256 tokensIn,
@@ -90,7 +101,8 @@ contract LaunchRouter is IUnlockCallback {
         uint256 deadline,
         uint256 permitNonce,
         uint256 permitDeadline,
-        bytes calldata signature
+        bytes calldata signature,
+        address referrer
     ) external checkDeadline(deadline) returns (uint256 ethOut) {
         if (tokensIn == 0) revert ZeroAmount();
         (, ethOut) = _swap(
@@ -100,6 +112,7 @@ contract LaunchRouter is IUnlockCallback {
                 tokensIn,
                 msg.sender,
                 recipient,
+                referrer,
                 Pay.Permit2,
                 abi.encode(permitNonce, permitDeadline, signature)
             )
@@ -110,7 +123,9 @@ contract LaunchRouter is IUnlockCallback {
     /// @notice Simulate a swap (call with eth_call). Fees and hook rules (anti-snipe) are applied exactly
     /// as in a real swap for the calling tx.origin.
     function quote(PoolKey calldata key, bool isBuy, uint256 amountIn) external returns (uint256 amountOut) {
-        try poolManager.unlock(abi.encode(Callback(key, isBuy, amountIn, msg.sender, msg.sender, Pay.Quote, ""))) {
+        try poolManager.unlock(
+            abi.encode(Callback(key, isBuy, amountIn, msg.sender, msg.sender, address(0), Pay.Quote, ""))
+        ) {
             revert UnexpectedQuoteRevert("");
         } catch (bytes memory reason) {
             if (reason.length == 68 && bytes4(reason) == QuoteResult.selector) {
@@ -137,7 +152,7 @@ contract LaunchRouter is IUnlockCallback {
                 amountSpecified: -int256(c.amountIn),
                 sqrtPriceLimitX96: c.isBuy ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             }),
-            ""
+            _hookData(c.referrer)
         );
 
         Currency eth = c.key.currency0;
@@ -185,5 +200,10 @@ contract LaunchRouter is IUnlockCallback {
     function _swap(Callback memory c) internal returns (uint256 paid, uint256 out) {
         bytes memory res = poolManager.unlock(abi.encode(c));
         (paid, out) = abi.decode(res, (uint256, uint256));
+    }
+
+    /// @dev The FeeHook reads hookData = abi.encode(referrer); empty hookData means no referrer.
+    function _hookData(address referrer) internal pure returns (bytes memory) {
+        return referrer == address(0) ? new bytes(0) : abi.encode(referrer);
     }
 }

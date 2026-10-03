@@ -27,6 +27,8 @@ interface ITreasurySource {
 /// @notice Uniswap v4 hook for launchpad pools (native ETH / token).
 ///  - Takes a per-pool fee (snapshotted at launch, capped at MAX_FEE_BPS) on every swap, always in ETH.
 ///  - Splits the fee between the token's creator (fee recipient) and the protocol treasury.
+///  - Referrals: part of the protocol cut (per-pool snapshot, capped at MAX_REFERRAL_SHARE_BPS) goes to the
+///    trader's referrer. The first valid referrer a trader (tx.origin) passes in hookData sticks for good.
 ///  - Fees are held as ERC-6909 claims on the PoolManager and paid out in ETH on claim.
 ///  - Only the factory can create pools that use this hook.
 ///  - Light anti-snipe: no third-party swaps in the launch second, then a per-tx.origin buy cap for a
@@ -38,6 +40,7 @@ contract FeeHook is BaseHook, IUnlockCallback {
     using CurrencyLibrary for Currency;
 
     uint256 public constant MAX_FEE_BPS = 200; // 2% hard cap, enforced for every pool
+    uint256 public constant MAX_REFERRAL_SHARE_BPS = 5000; // referrers never get more than half the protocol cut
     uint256 internal constant BPS = 10_000;
     Currency internal constant ETH = Currency.wrap(address(0));
     uint256 internal constant ETH_ID = 0; // ERC-6909 id of native ETH
@@ -46,6 +49,7 @@ contract FeeHook is BaseHook, IUnlockCallback {
         address feeRecipient; // receives the creator share; transferable by the current recipient
         uint16 feeBps;
         uint16 creatorShareBps;
+        uint16 referralShareBps; // share of the protocol cut paid to the trader's referrer
         uint40 launchedAt;
         uint32 antiSnipeDuration;
         uint128 antiSnipeMaxBuy; // max tokens one tx.origin may buy during the anti-snipe window
@@ -56,11 +60,19 @@ contract FeeHook is BaseHook, IUnlockCallback {
 
     mapping(PoolId => PoolConfig) public poolConfig;
     mapping(PoolId => mapping(address => uint256)) public antiSnipeBought;
-    mapping(address => uint256) public claimable;
+    mapping(address => uint256) public claimable; // creator and referral fees, pooled per address
     uint256 public protocolFeesAccrued;
+    /// @notice First valid referrer each trader (tx.origin) traded with. Set once, never changes.
+    mapping(address trader => address referrer) public referrerOf;
 
     event FactorySet(address indexed factory);
-    event PoolRegistered(PoolId indexed poolId, address indexed feeRecipient, uint16 feeBps, uint16 creatorShareBps);
+    event PoolRegistered(
+        PoolId indexed poolId,
+        address indexed feeRecipient,
+        uint16 feeBps,
+        uint16 creatorShareBps,
+        uint16 referralShareBps
+    );
     event Trade(
         PoolId indexed poolId,
         address indexed trader,
@@ -74,6 +86,8 @@ contract FeeHook is BaseHook, IUnlockCallback {
     event FeesClaimed(address indexed recipient, uint256 amount);
     event ProtocolFeesClaimed(address indexed treasury, uint256 amount);
     event FeeRecipientTransferred(PoolId indexed poolId, address indexed from, address indexed to);
+    event ReferrerSet(address indexed trader, address indexed referrer);
+    event ReferralFeeAccrued(PoolId indexed poolId, address indexed referrer, address indexed trader, uint256 amount);
 
     error OnlyAdmin();
     error OnlyFactory();
@@ -136,6 +150,7 @@ contract FeeHook is BaseHook, IUnlockCallback {
         address feeRecipient,
         uint16 feeBps,
         uint16 creatorShareBps,
+        uint16 referralShareBps,
         uint32 antiSnipeDuration,
         uint128 antiSnipeMaxBuy
     ) external onlyFactory {
@@ -144,18 +159,19 @@ contract FeeHook is BaseHook, IUnlockCallback {
         }
         if (feeRecipient == address(0)) revert ZeroAddress();
         if (feeBps > MAX_FEE_BPS) revert FeeTooHigh();
-        if (creatorShareBps > BPS) revert InvalidShare();
+        if (creatorShareBps > BPS || referralShareBps > MAX_REFERRAL_SHARE_BPS) revert InvalidShare();
         PoolId id = key.toId();
         if (poolConfig[id].launchedAt != 0) revert PoolAlreadyRegistered();
         poolConfig[id] = PoolConfig({
             feeRecipient: feeRecipient,
             feeBps: feeBps,
             creatorShareBps: creatorShareBps,
+            referralShareBps: referralShareBps,
             launchedAt: uint40(block.timestamp),
             antiSnipeDuration: antiSnipeDuration,
             antiSnipeMaxBuy: antiSnipeMaxBuy
         });
-        emit PoolRegistered(id, feeRecipient, feeBps, creatorShareBps);
+        emit PoolRegistered(id, feeRecipient, feeBps, creatorShareBps, referralShareBps);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -170,7 +186,8 @@ contract FeeHook is BaseHook, IUnlockCallback {
 
     /// @dev When ETH is the *specified* side (exact-in buy, exact-out sell) the fee is taken here,
     /// from the specified amount, by returning a positive specified delta.
-    function _beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata)
+    /// The trader's referrer is resolved (and bound, on their first referred trade) here, on every swap.
+    function _beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
         internal
         override
         returns (bytes4, BeforeSwapDelta, uint24)
@@ -179,10 +196,11 @@ contract FeeHook is BaseHook, IUnlockCallback {
         PoolConfig storage cfg = poolConfig[id];
         if (sender != factory && block.timestamp == cfg.launchedAt) revert LaunchLocked();
 
+        address referrer = _referrerFor(hookData);
         uint256 fee = _specifiedSideFee(params, cfg.feeBps);
         if (fee == 0) return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
 
-        _accrue(cfg, fee);
+        _accrue(id, cfg, fee, referrer);
         return (this.beforeSwap.selector, toBeforeSwapDelta(fee.toInt128(), 0), 0);
     }
 
@@ -209,7 +227,7 @@ contract FeeHook is BaseHook, IUnlockCallback {
         } else {
             fee = ethMoved * cfg.feeBps / BPS;
             if (fee > 0) {
-                _accrue(cfg, fee);
+                _accrue(id, cfg, fee, referrerOf[tx.origin]); // bound in beforeSwap if this trade set it
                 hookDelta = fee.toInt128();
             }
         }
@@ -232,7 +250,8 @@ contract FeeHook is BaseHook, IUnlockCallback {
     // Fees
     // ---------------------------------------------------------------------------------------------
 
-    /// @notice Pays out all ETH fees owed to `recipient`. Anyone can trigger it; funds only go to `recipient`.
+    /// @notice Pays out all ETH fees owed to `recipient` (creator and referral fees). Anyone can trigger it;
+    /// funds only go to `recipient`.
     function claimFees(address recipient) external returns (uint256 amount) {
         amount = claimable[recipient];
         if (amount == 0) revert NothingToClaim();
@@ -272,11 +291,39 @@ contract FeeHook is BaseHook, IUnlockCallback {
     // Internal
     // ---------------------------------------------------------------------------------------------
 
-    function _accrue(PoolConfig storage cfg, uint256 fee) internal {
+    /// @dev Books `fee` exactly once: the creator cut is the same with or without a referrer; the referrer
+    /// (if any) gets `referralShareBps` of the protocol cut and the protocol keeps the rest.
+    function _accrue(PoolId id, PoolConfig storage cfg, uint256 fee, address referrer) internal {
         poolManager.mint(address(this), ETH_ID, fee);
         uint256 creatorCut = fee * cfg.creatorShareBps / BPS;
         claimable[cfg.feeRecipient] += creatorCut;
-        protocolFeesAccrued += fee - creatorCut;
+        uint256 protocolCut = fee - creatorCut;
+        if (referrer != address(0)) {
+            uint256 referralCut = protocolCut * cfg.referralShareBps / BPS;
+            if (referralCut > 0) {
+                claimable[referrer] += referralCut;
+                protocolCut -= referralCut;
+                emit ReferralFeeAccrued(id, referrer, tx.origin, referralCut);
+            }
+        }
+        protocolFeesAccrued += protocolCut;
+    }
+
+    /// @dev The trader's (tx.origin) referrer. Sticky: the first valid referrer a trader passes is stored and
+    /// used for all their later trades, whatever hookData says then. hookData counts only when it is exactly one
+    /// ABI-encoded address that is neither zero nor the trader; anything else is ignored, never reverted on,
+    /// so third-party routers that pass their own hookData keep working.
+    function _referrerFor(bytes calldata hookData) internal returns (address referrer) {
+        referrer = referrerOf[tx.origin];
+        if (referrer != address(0) || hookData.length != 32) return referrer;
+        uint256 word = uint256(bytes32(hookData));
+        // Dirty upper bits mean this is not an ABI-encoded address: ignore it rather than truncate it into one.
+        if (word >> 160 != 0) return address(0);
+        address candidate = address(uint160(word));
+        if (candidate == address(0) || candidate == tx.origin) return address(0);
+        referrerOf[tx.origin] = candidate;
+        emit ReferrerSet(tx.origin, candidate);
+        return candidate;
     }
 
     function _payout(address to, uint256 amount) internal {

@@ -15,11 +15,11 @@ export const deployments: Record<number, Deployment> = {
   "1337": {
     "chainId": 1337,
     "factory": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-    "hook": "0xE7b0739124Ed3e0E452f8f77F54492cC3e5760cc",
+    "hook": "0x3D9317EADAE53fFc8C87F8A47b12D6E0E17fe0Cc",
     "name": "local",
     "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
     "poolManager": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     "router": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "startBlock": 1
+    "startBlock": 2
   }
 };

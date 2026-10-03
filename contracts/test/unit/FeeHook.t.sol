@@ -171,7 +171,7 @@ contract FeeHookTest is LaunchFixture {
         uint256 aliceTokens = t.balanceOf(alice);
         vm.startPrank(alice, alice);
         t.approve(address(router), aliceTokens);
-        assertGt(router.sell(k, aliceTokens, 0, alice, block.timestamp), 0);
+        assertGt(router.sell(k, aliceTokens, 0, alice, block.timestamp, address(0)), 0);
         vm.stopPrank();
         // after the window, no cap
         vm.warp(block.timestamp + 60);
@@ -196,7 +196,7 @@ contract FeeHookTest is LaunchFixture {
         token.approve(address(router), tokensOut);
         uint256 c1 = _hookClaims();
         vm.prank(bob, bob);
-        uint256 ethOut = router.sell(key, tokensOut, 0, bob, block.timestamp);
+        uint256 ethOut = router.sell(key, tokensOut, 0, bob, block.timestamp, address(0));
         uint256 fee = _hookClaims() - c1;
         assertEq(fee, (ethOut + fee) / 100);
         assertLt(ethOut, ethIn, "round trip always loses the fees");

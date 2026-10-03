@@ -120,3 +120,37 @@ export const feeClaim = onchainTable(
     recipientIdx: index().on(table.recipient),
   }),
 );
+
+/** Sticky referral bindings (FeeHook.ReferrerSet): at most one per trader, never changed. */
+export const referral = onchainTable(
+  "referral",
+  (t) => ({
+    id: t.text().primaryKey(), // chainId:trader
+    chainId: t.integer().notNull(),
+    trader: t.hex().notNull(),
+    referrer: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    txHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    referrerIdx: index().on(table.chainId, table.referrer),
+  }),
+);
+
+/** Referral cuts of the platform fee (FeeHook.ReferralFeeAccrued), claimable by the referrer. */
+export const referralFee = onchainTable(
+  "referral_fee",
+  (t) => ({
+    id: t.text().primaryKey(), // chainId:txHash:logIndex
+    chainId: t.integer().notNull(),
+    poolId: t.hex().notNull(),
+    referrer: t.hex().notNull(),
+    trader: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    txHash: t.hex().notNull(),
+  }),
+  (table) => ({
+    referrerIdx: index().on(table.chainId, table.referrer),
+  }),
+);

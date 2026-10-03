@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ClaimFeesCard } from "@/components/claim-fees";
+import { ReferralCard } from "@/components/referral-card";
 import { CopyButton, StatTile, TokenAvatar } from "@/components/token-bits";
 import { useCreator, useHoldings, type Token } from "@/lib/api";
 import { useActiveChain } from "@/lib/active-chain";
@@ -113,6 +114,8 @@ export function ProfileView({ address }: { address: `0x${string}` }) {
         <StatTile label={t("profile.earned")} value={formatValue(creator?.earnedEth ?? 0, ethUsd)} />
         <StatTile label={t("profile.created")} value={creator?.created.length ?? 0} />
       </div>
+
+      <ReferralCard chainId={chainId} account={address} isOwn={isMe} />
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">{t("profile.created")}</h2>
