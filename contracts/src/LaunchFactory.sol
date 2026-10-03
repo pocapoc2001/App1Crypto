@@ -39,6 +39,7 @@ contract LaunchFactory is Ownable, IUnlockCallback {
     struct LaunchConfig {
         uint16 feeBps; // swap fee, in ETH (<= FeeHook.MAX_FEE_BPS)
         uint16 creatorShareBps; // share of the fee paid to the creator
+        uint16 referralShareBps; // share of the protocol cut paid to the trader's referrer (<= 50%)
         uint16 maxDevBuyBps; // max % of supply the creator may buy in the launch tx
         uint16 antiSnipeMaxBuyBps; // max % of supply one wallet may buy during the anti-snipe window
         uint32 antiSnipeDuration; // seconds
@@ -142,6 +143,7 @@ contract LaunchFactory is Ownable, IUnlockCallback {
             msg.sender,
             cfg.feeBps,
             cfg.creatorShareBps,
+            cfg.referralShareBps,
             cfg.antiSnipeDuration,
             uint128(TOTAL_SUPPLY * cfg.antiSnipeMaxBuyBps / BPS)
         );
@@ -265,7 +267,8 @@ contract LaunchFactory is Ownable, IUnlockCallback {
 
     function _setConfig(LaunchConfig memory c) internal {
         if (
-            c.feeBps > hook.MAX_FEE_BPS() || c.creatorShareBps > BPS || c.maxDevBuyBps > MAX_DEV_BUY_BPS
+            c.feeBps > hook.MAX_FEE_BPS() || c.creatorShareBps > BPS
+                || c.referralShareBps > hook.MAX_REFERRAL_SHARE_BPS() || c.maxDevBuyBps > MAX_DEV_BUY_BPS
                 || c.antiSnipeMaxBuyBps == 0 || c.antiSnipeMaxBuyBps > BPS
                 || c.antiSnipeDuration > MAX_ANTI_SNIPE_DURATION || c.creationFee > MAX_CREATION_FEE
                 || c.startingMarketCap < LaunchMath.MIN_MARKET_CAP || c.startingMarketCap > LaunchMath.MAX_MARKET_CAP

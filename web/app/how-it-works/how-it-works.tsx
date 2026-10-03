@@ -34,6 +34,7 @@ const copy: Record<
       ["Swap fee (buy or sell)", "1% of the ETH amount"],
       ["Creator share", "50% of the fee"],
       ["Platform share", "50% of the fee"],
+      ["Referrer share (if the trader was referred)", "20% of the platform share — the trader pays nothing extra"],
       ["Launching a coin", "Free (gas only)"],
       ["Hard cap in the contract", "2% — and existing pools can never change"],
     ],
@@ -46,6 +47,7 @@ const copy: Record<
       { q: "Can the platform change the fee on my coin?", a: "No. Fee and creator share are written into the pool at launch. The owner can only change settings for future launches, and never above 2%." },
       { q: "What is launch protection?", a: "For the first 60 seconds each wallet can buy at most 1% of supply, and nobody except the creator can trade in the launch block. This slows down sniper bots." },
       { q: "Where do I see my earnings?", a: "On your profile. Fees from all your coins accumulate in one balance you can claim in ETH." },
+      { q: "How do referral links work?", a: "Copy your link from your profile. The first time someone trades through a referral link, that referrer is attached to their wallet for good. The referrer then earns 20% of the platform's share of every fee that wallet pays, in ETH, claimable from the profile. Creators keep their full 50%, and the trader pays nothing extra." },
     ],
   },
   ro: {
@@ -61,6 +63,7 @@ const copy: Record<
       ["Comision de swap (cumpărare sau vânzare)", "1% din suma în ETH"],
       ["Partea creatorului", "50% din comision"],
       ["Partea platformei", "50% din comision"],
+      ["Partea celui care recomandă (dacă traderul a fost recomandat)", "20% din partea platformei — traderul nu plătește nimic în plus"],
       ["Lansarea unei monede", "Gratuită (doar gas)"],
       ["Limită maximă în contract", "2% — iar pool-urile existente nu se pot schimba"],
     ],
@@ -73,6 +76,7 @@ const copy: Record<
       { q: "Poate platforma să schimbe comisionul monedei mele?", a: "Nu. Comisionul și partea creatorului sunt scrise în pool la lansare. Proprietarul poate schimba doar setările pentru lansări viitoare și niciodată peste 2%." },
       { q: "Ce este protecția la lansare?", a: "În primele 60 de secunde fiecare portofel poate cumpăra maxim 1% din total, iar în blocul de lansare nu poate tranzacționa nimeni în afară de creator. Asta încetinește boții." },
       { q: "Unde îmi văd câștigurile?", a: "În profil. Comisioanele de la toate monedele tale se adună într-un singur sold pe care îl retragi în ETH." },
+      { q: "Cum funcționează linkurile de recomandare?", a: "Copiază linkul din profil. Prima dată când cineva tranzacționează printr-un link de recomandare, cel care l-a recomandat rămâne legat de portofelul lui pentru totdeauna. Acesta primește apoi 20% din partea platformei din fiecare comision plătit de acel portofel, în ETH, retras din profil. Creatorii își păstrează întregul 50%, iar traderul nu plătește nimic în plus." },
     ],
   },
 };

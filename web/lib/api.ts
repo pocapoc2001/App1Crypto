@@ -70,6 +70,7 @@ export type CreatorInfo = {
   earnedEth: number;
 };
 export type Holding = Token & { balance: string };
+export type ReferralStats = { referredTraders: number; earnedEth: number; earnedWei: string };
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${INDEXER_URL}${path}`, { cache: "no-store" });
@@ -133,6 +134,14 @@ export const useCreator = (chainId: number, address?: string) =>
   useQuery({
     queryKey: ["creator", chainId, address?.toLowerCase()],
     queryFn: () => get<CreatorInfo>(`/creators/${address}?chainId=${chainId}`),
+    enabled: Boolean(address),
+    refetchInterval: 10_000,
+  });
+
+export const useReferrals = (chainId: number, address?: string) =>
+  useQuery({
+    queryKey: ["referrals", chainId, address?.toLowerCase()],
+    queryFn: () => get<ReferralStats>(`/referrals/${address}?chainId=${chainId}`),
     enabled: Boolean(address),
     refetchInterval: 10_000,
   });

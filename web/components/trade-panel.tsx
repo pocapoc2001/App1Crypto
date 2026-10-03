@@ -22,6 +22,7 @@ import type { Token } from "@/lib/api";
 import { deploymentFor } from "@/lib/config";
 import { formatTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { referrerFor } from "@/lib/referral";
 import {
   SLIPPAGE_OPTIONS,
   deadlineIn,
@@ -118,6 +119,7 @@ export function TradePanel({ token }: { token: Token }) {
     if (!d || !address || !amountIn || !quote.data || !publicClient) return;
     const key = poolKeyFor(token.address, d.hook);
     const min = minOut(quote.data, slippage);
+    const referrer = referrerFor(address);
     try {
       if (walletChainId !== chainId) await switchChainAsync({ chainId });
       let hash: `0x${string}`;
@@ -128,7 +130,7 @@ export function TradePanel({ token }: { token: Token }) {
           address: d.router,
           abi: launchRouterAbi,
           functionName: "buy",
-          args: [key, min, address, deadlineIn(600)],
+          args: [key, min, address, deadlineIn(600), referrer],
           value: amountIn,
         });
       } else if (!permitUsable) {
@@ -154,7 +156,7 @@ export function TradePanel({ token }: { token: Token }) {
           address: d.router,
           abi: launchRouterAbi,
           functionName: "sell",
-          args: [key, amountIn, min, address, deadlineIn(600)],
+          args: [key, amountIn, min, address, deadlineIn(600), referrer],
         });
       } else {
         setStatus("signing");
@@ -176,7 +178,7 @@ export function TradePanel({ token }: { token: Token }) {
           address: d.router,
           abi: launchRouterAbi,
           functionName: "sellWithPermit",
-          args: [key, amountIn, min, address, deadlineIn(600), nonce, permitDeadline, signature],
+          args: [key, amountIn, min, address, deadlineIn(600), nonce, permitDeadline, signature, referrer],
         });
       }
       setStatus("pending");

@@ -47,10 +47,11 @@ contract LaunchFactoryTest is LaunchFixture {
         assertEq(launchedAt, START_TIME);
         assertEq(factory.launchCount(), 1);
 
-        (address recipient, uint16 feeBps, uint16 share,,,) = hook.poolConfig(key.toId());
+        (address recipient, uint16 feeBps, uint16 share, uint16 referralShare,,,) = hook.poolConfig(key.toId());
         assertEq(recipient, creator);
         assertEq(feeBps, 100);
         assertEq(share, 5000);
+        assertEq(referralShare, 2000);
     }
 
     function test_launch_startingMarketCapMatchesConfig() public {
@@ -156,7 +157,7 @@ contract LaunchFactoryTest is LaunchFixture {
         manager.initialize(key, TickMath.getSqrtPriceAtTick(0));
 
         vm.expectRevert(FeeHook.OnlyFactory.selector);
-        hook.registerPool(key, address(this), 100, 5000, 0, 0);
+        hook.registerPool(key, address(this), 100, 5000, 2000, 0, 0);
     }
 
     function test_setFactory_onlyOnce() public {
@@ -185,6 +186,11 @@ contract LaunchFactoryTest is LaunchFixture {
         factory.setConfig(c);
 
         c = defaultConfig();
+        c.referralShareBps = 5001; // referrers can get at most half of the platform's cut
+        vm.expectRevert(LaunchFactory.InvalidConfig.selector);
+        factory.setConfig(c);
+
+        c = defaultConfig();
         c.maxDevBuyBps = 1001;
         vm.expectRevert(LaunchFactory.InvalidConfig.selector);
         factory.setConfig(c);
@@ -206,7 +212,9 @@ contract LaunchFactoryTest is LaunchFixture {
 
         c = defaultConfig();
         c.feeBps = 200;
+        c.referralShareBps = 5000;
         factory.setConfig(c);
+        assertEq(factory.getConfig().referralShareBps, 5000);
         vm.stopPrank();
     }
 
@@ -215,16 +223,27 @@ contract LaunchFactoryTest is LaunchFixture {
         LaunchFactory.LaunchConfig memory c = defaultConfig();
         c.feeBps = 200;
         c.creatorShareBps = 0;
+        c.referralShareBps = 0;
         vm.prank(owner);
         factory.setConfig(c);
 
-        (, uint16 feeBps, uint16 share,,,) = hook.poolConfig(key.toId());
+        (, uint16 feeBps, uint16 share, uint16 referralShare,,,) = hook.poolConfig(key.toId());
         assertEq(feeBps, 100);
         assertEq(share, 5000);
+        assertEq(referralShare, 2000);
 
         uint256 before = _hookClaims();
-        _buy(alice, key, 1 ether);
+        _buy(alice, key, 1 ether, bob);
         assertEq(_hookClaims() - before, 0.01 ether, "old pool still charges 1%");
+        assertEq(hook.claimable(bob), 0.001 ether, "old pool still pays referrers 20% of the platform cut");
+
+        // A pool launched after the change uses the new snapshot: no referral share.
+        (, PoolKey memory key2) = _launchAndOpen();
+        (,,, uint16 referralShare2,,,) = hook.poolConfig(key2.toId());
+        assertEq(referralShare2, 0);
+        uint256 bobBefore = hook.claimable(bob);
+        _buy(alice, key2, 1 ether);
+        assertEq(hook.claimable(bob), bobBefore, "no referral cut on the new pool");
     }
 
     function test_setTreasury() public {

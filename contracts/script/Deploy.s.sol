@@ -78,6 +78,7 @@ contract Deploy is Script {
             LaunchFactory.LaunchConfig({
                 feeBps: 100, // 1% per swap, in ETH
                 creatorShareBps: 5000, // 50% to the creator
+                referralShareBps: 2000, // 20% of the platform's half to the trader's referrer, if any
                 maxDevBuyBps: 500, // creator can buy at most 5% at launch
                 antiSnipeMaxBuyBps: 100, // max 1% per wallet...
                 antiSnipeDuration: 60, // ...during the first 60 seconds

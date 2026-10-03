@@ -35,6 +35,7 @@ abstract contract LaunchForkBase is Test {
         address treasury = makeAddr("treasury");
         address creator = makeAddr("creator");
         address trader = makeAddr("trader");
+        address referrer = makeAddr("referrer");
         vm.deal(creator, 10 ether);
         vm.deal(trader, 10 ether);
 
@@ -50,6 +51,7 @@ abstract contract LaunchForkBase is Test {
             LaunchFactory.LaunchConfig({
                 feeBps: 100,
                 creatorShareBps: 5000,
+                referralShareBps: 2000,
                 maxDevBuyBps: 500,
                 antiSnipeMaxBuyBps: 100,
                 antiSnipeDuration: 60,
@@ -66,12 +68,13 @@ abstract contract LaunchForkBase is Test {
         vm.warp(block.timestamp + 61);
 
         vm.prank(trader, trader);
-        uint256 tokens = router.buy{value: 1 ether}(key, 0, trader, block.timestamp);
+        uint256 tokens = router.buy{value: 1 ether}(key, 0, trader, block.timestamp, referrer);
         assertGt(tokens, 0);
+        assertEq(hook.referrerOf(trader), referrer);
 
         vm.startPrank(trader, trader);
         LaunchToken(t).approve(address(router), tokens);
-        uint256 ethOut = router.sell(key, tokens, 0, trader, block.timestamp);
+        uint256 ethOut = router.sell(key, tokens, 0, trader, block.timestamp, address(0));
         vm.stopPrank();
         assertGt(ethOut, 0.9 ether);
 
@@ -79,6 +82,13 @@ abstract contract LaunchForkBase is Test {
         uint256 before = creator.balance;
         hook.claimFees(creator);
         assertEq(creator.balance - before, owed);
+
+        // The referrer earned 20% of the platform's half on both trades (sticky on the sell) and claims it in ETH.
+        uint256 referralOwed = hook.claimable(referrer);
+        assertGt(referralOwed, 0.0019 ether);
+        before = referrer.balance;
+        hook.claimFees(referrer);
+        assertEq(referrer.balance - before, referralOwed);
         hook.claimProtocolFees();
         assertGt(treasury.balance, 0);
     }

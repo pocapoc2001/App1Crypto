@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { and, client, desc, eq, graphql, gt, ilike, or, replaceBigInts, sql } from "ponder";
 
-const { token, trade, candle, holder, feeClaim } = schema;
+const { token, trade, candle, holder, feeClaim, referral, referralFee } = schema;
 const app = new Hono();
 
 app.use("*", cors());
@@ -164,6 +164,26 @@ app.get("/creators/:address", async (c) => {
     .orderBy(desc(feeClaim.timestamp));
   const earnedEth = created.reduce((s, t) => s + (t.feesEth * t.creatorShareBps) / 10_000, 0);
   return json(c, { created, claims, earnedEth });
+});
+
+/**
+ * GET /referrals/:address?chainId=84532
+ * Traders bound to `address` as their (sticky) referrer, and the lifetime referral fees it earned.
+ */
+app.get("/referrals/:address", async (c) => {
+  const chainId = Number(c.req.query("chainId"));
+  if (!Number.isInteger(chainId)) return c.json({ error: "chainId query parameter required" }, 400);
+  const who = addr(c.req.param("address"));
+  const [traders] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(referral)
+    .where(and(eq(referral.chainId, chainId), eq(referral.referrer, who)));
+  const [fees] = await db
+    .select({ total: sql<string>`coalesce(sum(${referralFee.amount}), 0)` })
+    .from(referralFee)
+    .where(and(eq(referralFee.chainId, chainId), eq(referralFee.referrer, who)));
+  const earnedWei = BigInt(fees?.total ?? 0);
+  return json(c, { referredTraders: Number(traders?.count ?? 0), earnedWei, earnedEth: Number(earnedWei) / 1e18 });
 });
 
 /** Token balances of an address (portfolio). */

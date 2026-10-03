@@ -93,7 +93,7 @@ const en = {
   "safety.antiSnipeDesc": "Max 1% of supply per wallet in the first minute.",
 
   "profile.title": "Profile",
-  "profile.claimable": "Claimable creator fees",
+  "profile.claimable": "Claimable fees",
   "profile.claim": "Claim ETH",
   "profile.earned": "Lifetime creator earnings",
   "profile.created": "Coins created",
@@ -102,6 +102,16 @@ const en = {
   "profile.transferHint": "Send this coin's future creator fees to another wallet (e.g. a community takeover). Fees already earned stay with you.",
   "profile.connectPrompt": "Connect your wallet to see your profile.",
   "profile.nothing": "Nothing here yet.",
+
+  "referral.yourLink": "Your referral link",
+  "referral.title": "Referrals",
+  "referral.hint":
+    "Traders who arrive through your link and haven't been referred before stay linked to you for good: you earn {share}% of the platform fee ({volume}% of their volume) on every trade they make, in ETH. They pay nothing extra.",
+  "referral.traders": "Referred traders",
+  "referral.earned": "Referral earnings",
+  "referral.earnedHint": "Added to your claimable fees",
+  "referral.copied": "Referral link copied",
+  "referral.copyFailed": "Couldn't copy. Select the link and copy it manually.",
 
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
@@ -201,7 +211,7 @@ const ro: Record<Key, string> = {
   "safety.antiSnipeDesc": "Maxim 1% din total per portofel în primul minut.",
 
   "profile.title": "Profil",
-  "profile.claimable": "Comisioane de creator disponibile",
+  "profile.claimable": "Comisioane disponibile",
   "profile.claim": "Retrage ETH",
   "profile.earned": "Câștiguri totale ca creator",
   "profile.created": "Monede create",
@@ -210,6 +220,16 @@ const ro: Record<Key, string> = {
   "profile.transferHint": "Trimite comisioanele viitoare ale acestei monede către alt portofel (ex. preluare de comunitate). Comisioanele deja câștigate rămân ale tale.",
   "profile.connectPrompt": "Conectează portofelul pentru a vedea profilul.",
   "profile.nothing": "Nimic aici încă.",
+
+  "referral.yourLink": "Linkul tău de recomandare",
+  "referral.title": "Recomandări",
+  "referral.hint":
+    "Cei care ajung prin linkul tău și nu au mai fost recomandați de altcineva rămân legați de tine pentru totdeauna: câștigi {share}% din comisionul platformei ({volume}% din volumul lor) la fiecare tranzacție, în ETH. Ei nu plătesc nimic în plus.",
+  "referral.traders": "Traderi recomandați",
+  "referral.earned": "Câștiguri din recomandări",
+  "referral.earnedHint": "Se adaugă la comisioanele disponibile",
+  "referral.copied": "Link de recomandare copiat",
+  "referral.copyFailed": "Nu s-a putut copia. Selectează linkul și copiază-l manual.",
 
   "common.cancel": "Anulează",
   "common.confirm": "Confirmă",
