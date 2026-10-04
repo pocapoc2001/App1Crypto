@@ -25,6 +25,9 @@ export const enabledChains = enabledDeployments
 
 export const defaultChainId = enabledDeployments[0]?.chainId ?? 1337;
 
+/** True when every offered chain is a testnet: the UI then shows a testnet banner and ETH (not USD) values. */
+export const IS_TESTNET_ONLY = enabledChains.every((c) => c.testnet === true);
+
 export function deploymentFor(chainId: number): Deployment | undefined {
   return enabledDeployments.find((d) => d.chainId === chainId);
 }

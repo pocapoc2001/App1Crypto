@@ -11,6 +11,18 @@ import { join } from "node:path";
 const UPLOAD_DIR = join(process.cwd(), ".uploads");
 export const FILE_NAME_RE = /^[a-f0-9]{32}\.(png|jpg|gif|webp|json)$/;
 
+/** Thrown when no persistent storage is available (e.g. on Vercel without PINATA_JWT). */
+export class StorageNotConfiguredError extends Error {
+  constructor() {
+    super("Image storage is not configured (set PINATA_JWT).");
+  }
+}
+
+/** Serverless hosts have a read-only, ephemeral filesystem: local disk storage only works in development. */
+function assertLocalStorageAllowed() {
+  if (process.env.VERCEL) throw new StorageNotConfiguredError();
+}
+
 const EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -51,6 +63,7 @@ export async function storeImage(buf: Buffer, mime: keyof typeof EXT, siteUrl: s
     form.set("file", new Blob([new Uint8Array(buf)], { type: mime }), `image.${EXT[mime]}`);
     return pinata("pinFileToIPFS", form, false);
   }
+  assertLocalStorageAllowed();
   const name = `${hash(buf)}.${EXT[mime]}`;
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(join(UPLOAD_DIR, name), buf);
@@ -62,6 +75,7 @@ export async function storeJson(obj: unknown, siteUrl: string): Promise<string> 
   if (process.env.PINATA_JWT) {
     return pinata("pinJSONToIPFS", JSON.stringify({ pinataContent: obj }), true);
   }
+  assertLocalStorageAllowed();
   const name = `${hash(text)}.json`;
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(join(UPLOAD_DIR, name), text);

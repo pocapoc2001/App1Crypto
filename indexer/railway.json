@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "npm run codegen -w indexer",
+    "watchPatterns": ["/indexer/**", "/shared/**", "/package.json", "/package-lock.json"]
+  },
+  "deploy": {
+    "startCommand": "npm run start -w indexer -- --schema $RAILWAY_DEPLOYMENT_ID",
+    "healthcheckPath": "/ready",
+    "healthcheckTimeout": 900,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

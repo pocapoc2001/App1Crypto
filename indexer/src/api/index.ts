@@ -2,14 +2,14 @@ import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { and, client, desc, eq, graphql, gt, ilike, or, replaceBigInts, sql } from "ponder";
+import { and, desc, eq, gt, ilike, or, replaceBigInts, sql } from "ponder";
 
 const { token, trade, candle, holder, feeClaim, referral, referralFee } = schema;
 const app = new Hono();
 
+// Only the REST routes below are exposed. Ponder's raw /sql and /graphql endpoints are intentionally not
+// mounted: the web app doesn't use them and they would let anyone run arbitrary (expensive) queries.
 app.use("*", cors());
-app.use("/sql/*", client({ db, schema }));
-app.use("/graphql", graphql({ db, schema }));
 
 /** bigint -> string so responses are valid JSON. */
 const json = <T>(c: { json: (v: unknown) => Response }, value: T) =>
@@ -18,14 +18,24 @@ const json = <T>(c: { json: (v: unknown) => Response }, value: T) =>
 const intParam = (v: string | undefined, def: number, max: number) =>
   Math.min(Math.max(Number.parseInt(v ?? "", 10) || def, 0), max);
 
+/** A positive integer chain id, or undefined (unlike Number(), rejects "", "1.5", "abc"). */
+const parseChainId = (v: string | undefined) => (v && /^[1-9]\d{0,9}$/.test(v) ? Number(v) : undefined);
+
+const isAddr = (v: string | undefined): v is string => Boolean(v && /^0x[0-9a-fA-F]{40}$/.test(v));
+
 const addr = (v: string) => v.toLowerCase() as `0x${string}`;
+
+const CHAIN_ID_REQUIRED = { error: "chainId query parameter required" };
+const INVALID_CHAIN_ID = { error: "invalid chainId" };
+const INVALID_ADDRESS = { error: "invalid address" };
 
 /**
  * GET /tokens?chainId=84532&sort=new|trending|mcap|active&q=pepe&limit=30&offset=0
  * "trending" = most ETH volume in the last 24h.
  */
 app.get("/tokens", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
   const sort = c.req.query("sort") ?? "new";
   const q = c.req.query("q")?.trim();
   const limit = intParam(c.req.query("limit"), 30, 100);
@@ -78,7 +88,9 @@ app.get("/tokens", async (c) => {
 });
 
 app.get("/tokens/:chainId/:address", async (c) => {
-  const chainId = Number(c.req.param("chainId"));
+  const chainId = parseChainId(c.req.param("chainId"));
+  if (chainId === undefined) return c.json(INVALID_CHAIN_ID, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const id = `${chainId}:${addr(c.req.param("address"))}`;
   const rows = await db.select().from(token).where(eq(token.id, id)).limit(1);
   if (rows.length === 0) return c.json({ error: "not found" }, 404);
@@ -94,7 +106,9 @@ app.get("/tokens/:chainId/:address", async (c) => {
 });
 
 app.get("/tokens/:chainId/:address/trades", async (c) => {
-  const chainId = Number(c.req.param("chainId"));
+  const chainId = parseChainId(c.req.param("chainId"));
+  if (chainId === undefined) return c.json(INVALID_CHAIN_ID, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const limit = intParam(c.req.query("limit"), 50, 200);
   const rows = await db
     .select()
@@ -106,7 +120,9 @@ app.get("/tokens/:chainId/:address/trades", async (c) => {
 });
 
 app.get("/tokens/:chainId/:address/candles", async (c) => {
-  const chainId = Number(c.req.param("chainId"));
+  const chainId = parseChainId(c.req.param("chainId"));
+  if (chainId === undefined) return c.json(INVALID_CHAIN_ID, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const interval = intParam(c.req.query("interval"), 300, 86_400);
   const rows = await db
     .select()
@@ -120,7 +136,9 @@ app.get("/tokens/:chainId/:address/candles", async (c) => {
 });
 
 app.get("/tokens/:chainId/:address/holders", async (c) => {
-  const chainId = Number(c.req.param("chainId"));
+  const chainId = parseChainId(c.req.param("chainId"));
+  if (chainId === undefined) return c.json(INVALID_CHAIN_ID, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const limit = intParam(c.req.query("limit"), 20, 100);
   const rows = await db
     .select()
@@ -133,7 +151,8 @@ app.get("/tokens/:chainId/:address/holders", async (c) => {
 
 /** Live feed of the latest trades on a chain (home page ticker). */
 app.get("/trades/recent", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
   const limit = intParam(c.req.query("limit"), 20, 100);
   const rows = await db
     .select({ trade, symbol: token.symbol, name: token.name, metadataURI: token.metadataURI })
@@ -150,7 +169,9 @@ app.get("/trades/recent", async (c) => {
 
 /** Tokens created by an address + lifetime creator earnings. */
 app.get("/creators/:address", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const who = addr(c.req.param("address"));
   const created = await db
     .select()
@@ -171,8 +192,9 @@ app.get("/creators/:address", async (c) => {
  * Traders bound to `address` as their (sticky) referrer, and the lifetime referral fees it earned.
  */
 app.get("/referrals/:address", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
-  if (!Number.isInteger(chainId)) return c.json({ error: "chainId query parameter required" }, 400);
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const who = addr(c.req.param("address"));
   const [traders] = await db
     .select({ count: sql<number>`count(*)` })
@@ -188,7 +210,9 @@ app.get("/referrals/:address", async (c) => {
 
 /** Token balances of an address (portfolio). */
 app.get("/holdings/:address", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
+  if (!isAddr(c.req.param("address"))) return c.json(INVALID_ADDRESS, 400);
   const rows = await db
     .select({ holder, token })
     .from(holder)
@@ -202,7 +226,8 @@ app.get("/holdings/:address", async (c) => {
 });
 
 app.get("/stats", async (c) => {
-  const chainId = Number(c.req.query("chainId"));
+  const chainId = parseChainId(c.req.query("chainId"));
+  if (chainId === undefined) return c.json(CHAIN_ID_REQUIRED, 400);
   const [s] = await db
     .select({
       tokens: sql<number>`count(*)`,

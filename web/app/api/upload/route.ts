@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sniffImageType, storeImage, storeJson } from "@/lib/server/storage";
+import { StorageNotConfiguredError, sniffImageType, storeImage, storeJson } from "@/lib/server/storage";
 import { SITE_URL } from "@/lib/config";
 
 export const runtime = "nodejs";
@@ -51,6 +51,10 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ metadataURI, image });
   } catch (e) {
+    if (e instanceof StorageNotConfiguredError) {
+      console.error("upload rejected: PINATA_JWT is not set");
+      return NextResponse.json({ error: "Image storage is not configured" }, { status: 503 });
+    }
     console.error("upload failed", e);
     return NextResponse.json({ error: "Storage failed, try again" }, { status: 502 });
   }

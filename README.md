@@ -97,6 +97,10 @@ Config: 1% fee, 50% to the creator, and 20% of the platform half to referrers. T
 
 To run the app against it, set `PONDER_CHAINS=baseSepolia` in `indexer/.env.local` and `NEXT_PUBLIC_CHAINS=baseSepolia` in `web/.env.local`. Then start `npm run dev:indexer` and `npm run dev:web`, and trade with MetaMask on Base Sepolia.
 
+## Host it publicly (Vercel + Railway)
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for click-by-click steps. The web app runs on Vercel and the Ponder indexer plus PostgreSQL run on Railway. The configs are in `web/vercel.json` and `indexer/railway.json`, and the env templates are in `*/.env.production.example`.
+
 ## Deploy to a testnet (Base Sepolia)
 
 1. Create a **testnet-only** wallet: `cast wallet new`. Put the key in `contracts/.env` as `PRIVATE_KEY=0x…` and fund it from a Base Sepolia faucet.

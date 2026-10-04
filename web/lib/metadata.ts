@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { IS_TESTNET_ONLY } from "./config";
 
 export type TokenMetadata = {
   name?: string;
@@ -26,9 +27,14 @@ export function useTokenMetadata(uri?: string) {
   });
 }
 
+/**
+ * ETH/USD for display. Disabled on testnet-only deployments: test ETH is worthless, so every value is
+ * shown in ETH there instead of misleading dollar amounts (formatValue and PriceChart fall back to ETH).
+ */
 export function useEthPrice() {
   return useQuery({
     queryKey: ["eth-price"],
+    enabled: !IS_TESTNET_ONLY,
     queryFn: async () => {
       const res = await fetch("/api/eth-price");
       if (!res.ok) return undefined;

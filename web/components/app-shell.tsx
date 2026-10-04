@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChainSwitcher } from "@/components/chain-switcher";
 import { LanguageToggle } from "@/components/language-toggle";
+import { TestnetBanner } from "@/components/testnet-banner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME } from "@/lib/config";
 import { useT } from "@/lib/i18n";
@@ -85,6 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <TestnetBanner />
         <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-lg">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
