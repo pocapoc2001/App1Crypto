@@ -82,13 +82,29 @@ In the app, choose **Connect Wallet → "Anvil test wallet (local)"**. It signs 
 
 > If you restart anvil, run `npm run dev:deploy` again and delete `indexer/.ponder/` so the indexer starts fresh.
 
+## Live on Base Sepolia (testnet)
+
+Deployed 2026-10-04 at block 47664768. Source is verified on Blockscout and Sourcify.
+
+| Contract | Address |
+| --- | --- |
+| LaunchFactory | [`0xE652dF0F32Cb6120B5368836C01c275D96B71ba4`](https://base-sepolia.blockscout.com/address/0xE652dF0F32Cb6120B5368836C01c275D96B71ba4) |
+| FeeHook | [`0xdE08e873CB3E54254734CebbB4eBc43a2F6ea0CC`](https://base-sepolia.blockscout.com/address/0xdE08e873CB3E54254734CebbB4eBc43a2F6ea0CC) |
+| LaunchRouter | [`0xe2c5c09b5DC03A5D138e2C8541D129C06f22b983`](https://base-sepolia.blockscout.com/address/0xe2c5c09b5DC03A5D138e2C8541D129C06f22b983) |
+| Uniswap v4 PoolManager (canonical) | `0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408` |
+
+Config: 1% fee, 50% to the creator, and 20% of the platform half to referrers. The creator can buy at most 5% at launch. Anti-snipe allows max 1% per wallet for 60 s. Starting market cap is 1.5 ETH. Owner and treasury are the testnet deployer.
+
+To run the app against it, set `PONDER_CHAINS=baseSepolia` in `indexer/.env.local` and `NEXT_PUBLIC_CHAINS=baseSepolia` in `web/.env.local`. Then start `npm run dev:indexer` and `npm run dev:web`, and trade with MetaMask on Base Sepolia.
+
 ## Deploy to a testnet (Base Sepolia)
 
-1. Create a **testnet-only** wallet: `cast wallet new`. Fund it from a Base Sepolia faucet.
+1. Create a **testnet-only** wallet: `cast wallet new`. Put the key in `contracts/.env` as `PRIVATE_KEY=0x…` and fund it from a Base Sepolia faucet.
 2. Deploy:
    ```bash
    cd contracts
-   forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --private-key <TESTNET_KEY>
+   PK=$(grep '^PRIVATE_KEY=' .env | cut -d= -f2 | tr -d '\r\n ')
+   forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --slow --private-key "$PK"
    cd .. && npm run gen
    ```
 3. Indexer: `PONDER_CHAINS=baseSepolia npm run dev:indexer` (set `PONDER_RPC_URL_84532` to an Alchemy URL for reliability).

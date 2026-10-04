@@ -1,0 +1,10 @@
+# Store and check out text files with LF everywhere (keeps `forge fmt --check` and Prettier-style
+# tools happy on Windows, where core.autocrlf would otherwise turn files into CRLF).
+* text=auto eol=lf
+
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
